@@ -48,7 +48,7 @@ class VideoAnalyzer:
             timestamps = []
             for h in digest_data["highlights"]:
                 timestamp = h.get("timestamp", 0)
-                # timestamp가 문자열인 경우 float로 변환
+                # If timestamp is a string, convert it to float
                 if isinstance(timestamp, str):
                     try:
                         # Convert "MM:SS" format to seconds
@@ -59,13 +59,21 @@ class VideoAnalyzer:
                             timestamp = float(timestamp)
                     except:
                         timestamp = 0.0
-                timestamps.append(float(timestamp))
+                
+                # 0초나 너무 이른 타임스탬프 필터링 (최소 2초 이후)
+                if timestamp >= 2.0:
+                    timestamps.append(float(timestamp))
             
             frames = extract_video_frames(video_bytes, timestamps)
             
             highlight_frames = []
-            for highlight, frame in zip(digest_data["highlights"], frames):
-                if frame is not None:
+            valid_highlights = [h for h in digest_data["highlights"] if h.get("timestamp", 0) >= 2.0 or 
+                              (isinstance(h.get("timestamp"), str) and 
+                               (float(h.get("timestamp").split(":")[0]) * 60 + float(h.get("timestamp").split(":")[1]) >= 2.0 
+                                if ":" in h.get("timestamp", "") else float(h.get("timestamp", "0")) >= 2.0))]
+            
+            for i, highlight in enumerate(valid_highlights):
+                if i < len(frames) and frames[i] is not None:
                     timestamp = highlight.get("timestamp", 0)
                     if isinstance(timestamp, str):
                         try:
@@ -78,7 +86,7 @@ class VideoAnalyzer:
                             timestamp = 0.0
                     
                     highlight_frames.append({
-                        "frame": frame,
+                        "frame": frames[i],
                         "timestamp": float(timestamp),
                         "keywords": highlight.get("keywords", []),
                         "impact": highlight.get("impact", highlight.get("importance", "N/A")),
@@ -112,20 +120,25 @@ class VideoAnalyzer:
 VIDEO_ANALYSIS_PROMPTS = {
     "요약": "Can you create an executive summary of this video's content?",
     
-    "하이라이트 추출": """Extract high-impact highlight moments from this video and provide:
-1. A digest summary of the most important moments
-2. Key highlight timestamps with descriptions
-3. Generate representative images for each highlight moment
-4. Overall summary of the video content
+    "하이라이트 추출": """Extract high-impact highlight moments from this video and provide specific timestamps in seconds.
+
+IMPORTANT: You must provide exact timestamps in seconds (e.g., 15.5, 32.0, 47.2) for each highlight moment.
 
 Format the response as JSON:
 {
   "digest": "Brief summary of key moments",
   "highlights": [
     {
-      "timestamp": "MM:SS",
+      "timestamp": 15.5,
       "description": "What happens at this moment",
-      "importance": "high/medium/low"
+      "importance": "high",
+      "keywords": ["keyword1", "keyword2"]
+    },
+    {
+      "timestamp": 32.0,
+      "description": "Another important moment",
+      "importance": "medium",
+      "keywords": ["keyword3", "keyword4"]
     }
   ],
   "summary": "Overall video summary",

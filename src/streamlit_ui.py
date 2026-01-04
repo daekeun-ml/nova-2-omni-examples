@@ -320,11 +320,30 @@ def image_editing_demo(temperature, max_tokens, top_p):
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        uploaded_file = st.file_uploader("편집할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+        # 기본 이미지 사용 옵션
+        use_default = st.checkbox("기본 이미지 사용 (img-editing.png)", value=True)
+        
+        if use_default:
+            try:
+                default_path = "samples/img-editing.png"
+                with open(default_path, "rb") as f:
+                    uploaded_file = BytesIO(f.read())
+                    uploaded_file.name = "img-editing.png"
+                image = Image.open(default_path)
+                st.image(image, caption="기본 이미지 (img-editing.png)")
+            except FileNotFoundError:
+                st.error("기본 이미지를 찾을 수 없습니다. 이미지를 업로드해주세요.")
+                uploaded_file = st.file_uploader("편집할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+                if uploaded_file:
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption="업로드된 이미지")
+        else:
+            uploaded_file = st.file_uploader("편집할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+            if uploaded_file:
+                image = Image.open(uploaded_file)
+                st.image(image, caption="업로드된 이미지")
         
         if uploaded_file:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="원본 이미지")
             
             edit_type = st.selectbox(
                 "편집 유형:",
@@ -337,25 +356,25 @@ def image_editing_demo(temperature, max_tokens, top_p):
             if edit_type == "사용자 정의":
                 edit_params["edit_prompt"] = st.text_area(
                     "편집 지시사항을 입력하세요:",
-                    value="이미지 오른쪽에 나무 벤치를 추가해주세요",
+                    value="이미지 왼쪽 하단에 사자를 추가해주세요",
                     height=100
                 )
             elif edit_type == "텍스트 추가":
-                edit_params["text_content"] = st.text_input("추가할 텍스트:", value="Welcome")
-                edit_params["text_position"] = st.text_area("텍스트 위치 및 추가 설명:", value="유리창 중앙에", height=60)
-                edit_params["text_style"] = st.selectbox("텍스트 스타일:", ["유리창 글씨", "간판", "벽면 페인팅", "네온사인", "조각/새김"])
+                edit_params["text_content"] = st.text_input("추가할 텍스트:", value="Amazon")
+                edit_params["text_position"] = st.text_area("텍스트 위치 및 추가 설명:", value="가운데 빌딩 유리에. 그냥 오버레이가 아니라 빌딩 유리창 장식이야. 글자가 너무 크면 안되겠지? ", height=60)
+                edit_params["text_style"] = st.selectbox("텍스트 스타일:", ["간판", "유리창 글씨", "벽면 페인팅", "네온사인", "조각/새김"])
             elif edit_type == "사물/인물 추가":
                 edit_params["object_to_add"] = st.text_input("추가할 사물/인물:", value="고양이")
                 edit_params["add_position"] = st.selectbox("추가 위치:", ["왼쪽", "오른쪽", "중앙", "배경", "전경"])
                 edit_params["integration_style"] = st.selectbox("통합 방식:", ["자연스럽게", "사실적으로", "조화롭게"])
             elif edit_type == "사물/인물 제거":
-                edit_params["object_to_remove"] = st.text_input("제거할 사물/인물:", value="반찬통")
+                edit_params["object_to_remove"] = st.text_input("제거할 사물/인물:", value="호랑이")
             elif edit_type == "배경 변경":
                 edit_params["new_background"] = st.text_input("새로운 배경:", value="바다")
                 edit_params["transition_style"] = st.selectbox("전환 방식:", ["자연스럽게", "완전히 교체", "부분적으로"])
             elif edit_type == "색상 변경":
-                edit_params["target_object"] = st.text_input("색상을 바꿀 대상:", value="자전거")
-                edit_params["new_color"] = st.text_input("새로운 색상:", value="빨간색")
+                edit_params["target_object"] = st.text_input("색상을 바꿀 대상:", value="호랑이")
+                edit_params["new_color"] = st.text_input("새로운 색상:", value="흰색")
             elif edit_type == "스타일 변경":
                 edit_params["new_style"] = st.selectbox("새로운 스타일:", ["애니메이션 (2D - 일본풍)", "애니메이션 (2D - 서양풍)", "애니메이션 (3D)", "수채화", "유화", "만화", "빈티지"])
             
@@ -614,11 +633,30 @@ def object_detection_demo(temperature, max_tokens, top_p):
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+        # 기본 이미지 사용 옵션
+        use_default = st.checkbox("기본 이미지 사용 (img-car.png)", value=True)
+        
+        if use_default:
+            try:
+                default_path = "samples/img-car.png"
+                with open(default_path, "rb") as f:
+                    uploaded_file = BytesIO(f.read())
+                    uploaded_file.name = "img-car.png"
+                image = Image.open(default_path)
+                st.image(image, caption="기본 이미지 (img-car.png)")
+            except FileNotFoundError:
+                st.error("기본 이미지를 찾을 수 없습니다. 이미지를 업로드해주세요.")
+                uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+                if uploaded_file:
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption="업로드된 이미지")
+        else:
+            uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요", type=['png', 'jpg', 'jpeg'])
+            if uploaded_file:
+                image = Image.open(uploaded_file)
+                st.image(image, caption="업로드된 이미지")
         
         if uploaded_file:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="업로드된 이미지")
             
             detection_type = st.selectbox(
                 "탐지 유형:",
@@ -760,13 +798,32 @@ def multi_agent_demo(temperature, max_tokens, top_p):
     
     with tab2:
         st.subheader("이미지 업로드 및 분석")
-        uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요:", type=["png", "jpg", "jpeg"])
+        
+        # 기본 이미지 사용 옵션
+        use_default = st.checkbox("기본 이미지 사용 (img-car.png)", value=True)
+        
+        if use_default:
+            try:
+                default_path = "samples/img-car.png"
+                image = Image.open(default_path)
+                st.image(image, caption="기본 이미지 (img-car.png)", width="stretch")
+                # BytesIO 객체로 변환하여 uploaded_file처럼 사용
+                with open(default_path, "rb") as f:
+                    uploaded_file = BytesIO(f.read())
+                    uploaded_file.name = "img-car.png"
+            except FileNotFoundError:
+                st.error("기본 이미지를 찾을 수 없습니다. 이미지를 업로드해주세요.")
+                uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요:", type=["png", "jpg", "jpeg"])
+                if uploaded_file:
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption="업로드된 이미지", width="stretch")
+        else:
+            uploaded_file = st.file_uploader("분석할 이미지를 업로드하세요:", type=["png", "jpg", "jpeg"])
+            if uploaded_file:
+                image = Image.open(uploaded_file)
+                st.image(image, caption="업로드된 이미지", width="stretch")
 
         if uploaded_file:
-            # 이미지 표시
-            image = Image.open(uploaded_file)
-            st.image(image, caption="업로드된 이미지", width="stretch")
-
             if st.button("Multi-Agent 분석 시작"):
                 try:
                     image_bytes, image_format = convert_image_to_bytes(image)

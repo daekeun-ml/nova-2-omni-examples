@@ -88,13 +88,13 @@ class ImageEditor:
             return kwargs.get("edit_prompt", "")
         
         elif edit_type == "텍스트 추가":
-            text_content = kwargs.get("text_content", "Welcome")
-            text_position = kwargs.get("text_position", "유리창 중앙에")
-            text_style = kwargs.get("text_style", "유리창 글씨")
+            text_content = kwargs.get("text_content", "Amazon")
+            text_position = kwargs.get("text_position", "가운데 빌딩 유리에. 그냥 오버레이가 아니라 빌딩 유리창 장식이야. 글자가 너무 크면 안되겠지? ")
+            text_style = kwargs.get("text_style", "간판")
             
             style_prompts = {
-                "유리창 글씨": f"The words '{text_content}' can be seen on the glass window, written in an elegant calligraphy font that looks naturally etched or painted on the glass surface",
                 "간판": f"Add a realistic shop sign with '{text_content}' written in professional signage lettering, properly mounted and lit",
+                "유리창 글씨": f"The words '{text_content}' can be seen on the glass window, written in an elegant calligraphy font that looks naturally etched or painted on the glass surface",
                 "벽면 페인팅": f"The text '{text_content}' is painted directly on the wall surface with realistic paint texture and proper shadowing",
                 "네온사인": f"Create a glowing neon sign displaying '{text_content}' with realistic neon tube lighting effects",
                 "조각/새김": f"The text '{text_content}' appears carved or engraved into the surface with realistic depth and shadow effects"
@@ -113,7 +113,7 @@ class ImageEditor:
             return f"Add a {object_to_add} to the {position_map[add_position]} of this image {style_map[integration_style]}. Ensure proper lighting, shadows, and perspective to make it look like it belongs in the original scene."
         
         elif edit_type == "사물/인물 제거":
-            object_to_remove = kwargs.get("object_to_remove", "반찬통")
+            object_to_remove = kwargs.get("object_to_remove", "호랑이")
             return f"Remove the {object_to_remove} from this image"
         
         elif edit_type == "배경 변경":
@@ -129,8 +129,8 @@ class ImageEditor:
             return f"{style_map[transition_style]}. IMPORTANT: This is NOT a style transfer or artistic transformation - it's a precise background replacement. Keep all subjects identical to the original."
         
         elif edit_type == "색상 변경":
-            target_object = kwargs.get("target_object", "자전거")
-            new_color = kwargs.get("new_color", "빨간색")
+            target_object = kwargs.get("target_object", "호랑이")
+            new_color = kwargs.get("new_color", "흰색")
             return f"Change the color of the {target_object} to {new_color}"
         
         elif edit_type == "스타일 변경":
