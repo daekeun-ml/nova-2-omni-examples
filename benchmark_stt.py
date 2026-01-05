@@ -107,6 +107,14 @@ class NovaSTTBenchmark:
             return None
 
     def run_benchmark(self, num_samples=100):
+        print(f"=== STT Benchmark Configuration ===")
+        print(f"Model ID: {self.model_id}")
+        print(f"Region: {DEFAULT_REGION_ID}")
+        print(f"Concurrent Workers: {CONCURRENT_WORKERS}")
+        print(f"Sample Limit: {num_samples}")
+        print(f"Dataset: kresnik/zeroth_korean (Korean STT)")
+        print()
+        
         print("Loading dataset...")
         test_dataset = load_dataset("kresnik/zeroth_korean", split="test")
         # Disable audio decoding to avoid torchcodec issues
@@ -237,10 +245,11 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Nova STT Benchmark')
     parser.add_argument('--analyze', type=str, help='Analyze existing results from JSON file')
+    parser.add_argument('--num_samples', type=int, default=457, help='Number of samples to process')
     args = parser.parse_args()
     
     if args.analyze:
         analyze_benchmark_results(args.analyze)
     else:
         benchmark = NovaSTTBenchmark()
-        benchmark.run_benchmark(num_samples=457)  # Use all test samples
+        benchmark.run_benchmark(num_samples=args.num_samples)

@@ -1,6 +1,8 @@
 # Amazon Nova 2 Omni (Preview) Multimodal Demo & Benchmark
 
-A Streamlit-based demo application and benchmarking suite to experience and evaluate the powerful multimodal AI capabilities of Amazon Nova 2 Omni.
+A Streamlit-based demo application and comprehensive benchmarking suite to experience and evaluate the powerful multimodal AI capabilities of Amazon Nova 2 Omni.
+
+[한국어 README](README_ko.md)
 
 ## 🚀 Getting Started
 
@@ -41,9 +43,44 @@ A Streamlit-based demo application and benchmarking suite to experience and eval
    - Local: http://localhost:8501
    - Select desired features from the sidebar and explore
 
-## 🧪 Audio Benchmarking
+## 🧪 Benchmarking
 
-### STT (Speech-to-Text) Benchmark
+### OCR Benchmarking (OCRBench v2)
+
+Comprehensive OCR performance evaluation using the [OCRBench v2 dataset](https://huggingface.co/datasets/ling99/OCRBench_v2) with multiple metrics.
+
+**Supported Metrics:**
+- **Text Accuracy**: Basic text matching accuracy
+- **TEDS**: Table Edit Distance based Similarity (for table parsing tasks)
+- **IoU**: Intersection over Union (for localization tasks)
+- **VQA ANLS**: VQA task evaluation with ANLS scoring
+- **BLEU**: Machine translation quality metric (for OCR tasks)
+- **F-measure**: Precision and recall harmonic mean (for OCR tasks)
+- **ANLS**: Average Normalized Levenshtein Similarity
+
+**Run OCR benchmark:**
+```bash
+# Install benchmark dependencies
+uv sync --group benchmark
+
+# Run with 100 samples (default)
+uv run python benchmark_ocr.py
+
+# Run with specific number of samples
+uv run python benchmark_ocr.py --num_samples 200
+
+# Filter by task type to test specific metrics
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "table"  # TEDS metric
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "ocr"    # BLEU, F-measure
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "agent"  # IoU metric
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "vqa"    # VQA ANLS
+```
+
+**Output:**
+- Console: Real-time progress and comprehensive metrics
+- `benchmark/benchmark_ocr_results.json`: Detailed per-sample results
+
+### STT Benchmarking (Korean)
 
 Benchmark Amazon Nova 2 Omni's Korean speech recognition performance using the [Zeroth-Korean dataset](https://huggingface.co/datasets/kresnik/zeroth_korean).
 
@@ -58,25 +95,31 @@ Benchmark Amazon Nova 2 Omni's Korean speech recognition performance using the [
 - Latency measurements (TTFT, End-to-End) with P50/P95/P99 percentiles
 - Parallel processing with 15 concurrent workers
 - Progress tracking with real-time progress bars
-- Detailed results saved to JSON
 
-**Run benchmark:**
+**Run STT benchmark:**
 ```bash
-# Install benchmark dependencies
-uv sync --group benchmark
-
 # Run STT benchmark on all 457 test samples
-uv run benchmark_stt.py
+uv run python benchmark_stt.py
+
+# Run with specific number of samples
+uv run python benchmark_stt.py --num_samples 100
 
 # Analyze existing results
-uv run benchmark_stt.py --analyze benchmark/benchmark_stt_results.json
+uv run python benchmark_stt.py --analyze benchmark/benchmark_stt_results.json
 ```
 
 **Output:**
 - Console: Summary statistics (CER/WER averages, latency percentiles)
-- `benchmark/benchmark_stt_results.json`: Detailed per-sample results with reference/predicted text
+- `benchmark/benchmark_stt_results.json`: Detailed per-sample results
 
----
+## 📊 Benchmark Configuration
+
+Both benchmarks support the following configuration:
+- **Concurrent Workers**: 15 (for parallel processing)
+- **Model**: us.amazon.nova-2-omni-v1:0
+- **Region**: us-west-2
+- **Metrics**: Task-specific evaluation metrics
+- **Progress Tracking**: Real-time tqdm progress bars
 
 ## 🤖 About Amazon Nova 2 Omni
 
@@ -117,6 +160,36 @@ Amazon Nova 2 Omni is Amazon's next-generation multimodal reasoning and image ge
 - **Document Analysis**: Large document and video content analysis
 - **Speech Processing**: Meeting transcription, translation, and summarization
 - **Visual Search**: Image and video-based search systems
+
+## 📁 Project Structure
+
+```
+nova-2-omni-examples/
+├── main.py                    # Streamlit demo application
+├── benchmark_ocr.py           # OCR benchmark (OCRBench v2)
+├── benchmark_stt.py           # STT benchmark (Zeroth-Korean)
+├── src/
+│   ├── common.py             # Common utilities and configurations
+│   └── eval_metrics/
+│       └── ocr_metrics.py    # OCR evaluation metrics
+├── benchmark/                # Benchmark results directory
+└── README.md                 # This file
+```
+
+## 🔧 Development
+
+### Adding New Benchmarks
+
+1. Create a new benchmark script following the existing pattern
+2. Add evaluation metrics to `src/eval_metrics/`
+3. Update dependencies in `pyproject.toml`
+4. Add documentation to README
+
+### Configuration
+
+- Model and region settings: `src/common.py`
+- Benchmark parameters: Command-line arguments
+- Dependencies: `pyproject.toml`
 
 ---
 

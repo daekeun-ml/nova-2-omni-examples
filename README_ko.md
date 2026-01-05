@@ -1,6 +1,8 @@
 # Amazon Nova 2 Omni (Preview) 멀티모달 데모 & 벤치마크
 
-Amazon Nova 2 Omni의 강력한 멀티모달 AI 기능을 체험하고 평가할 수 있는 Streamlit 기반 데모 애플리케이션 및 벤치마킹 도구입니다.
+Amazon Nova 2 Omni의 강력한 멀티모달 AI 기능을 체험하고 평가할 수 있는 Streamlit 기반 데모 애플리케이션 및 종합 벤치마킹 도구입니다.
+
+[English README](README.md)
 
 ## 🚀 시작하기
 
@@ -41,42 +43,83 @@ Amazon Nova 2 Omni의 강력한 멀티모달 AI 기능을 체험하고 평가할
    - 로컬: http://localhost:8501
    - 사이드바에서 원하는 기능을 선택하여 탐색
 
-## 🧪 오디오 벤치마킹
+## 🧪 벤치마킹
 
-### STT (Speech-to-Text) 벤치마크
+### OCR 벤치마킹 (OCRBench v2)
 
-[Zeroth-Korean 데이터셋](https://huggingface.co/datasets/kresnik/zeroth_korean)을 사용하여 Amazon Nova 2 Omni의 한국어 음성 인식 성능을 벤치마크합니다.
+[OCRBench v2 데이터셋](https://huggingface.co/datasets/ling99/OCRBench_v2)을 사용한 다양한 메트릭으로 OCR 성능을 종합 평가합니다.
 
-**데이터셋 개요:**
-- **총 데이터량**: 51.6시간의 훈련 데이터와 1.2시간의 테스트 데이터
-- **발화 수**: 22,263개의 훈련 발화와 457개의 테스트 발화
-- **화자 수**: 105명의 훈련 화자와 10명의 테스트 화자
-- **샘플링 레이트**: 16kHz
+**지원 메트릭:**
+- **Text Accuracy**: 기본 텍스트 매칭 정확도
+- **TEDS**: 테이블 편집 거리 기반 유사도 (테이블 파싱 태스크용)
+- **IoU**: 교집합 대 합집합 비율 (위치 인식 태스크용)
+- **VQA ANLS**: ANLS 점수를 사용한 VQA 태스크 평가
+- **BLEU**: 기계번역 품질 메트릭 (OCR 태스크용)
+- **F-measure**: 정밀도와 재현율의 조화평균 (OCR 태스크용)
+- **ANLS**: 평균 정규화 레벤슈타인 유사도
 
-**기능:**
-- CER (Character Error Rate) 및 WER (Word Error Rate) 지표
-- TTFT, End-to-End 지연시간의 P50/P95/P99 백분위수 측정
-- 15개 동시 워커로 병렬 처리
-- 실시간 진행률 표시
-- JSON 형태로 상세 결과 저장
-
-**벤치마크 실행:**
+**OCR 벤치마크 실행:**
 ```bash
 # 벤치마크 의존성 설치
 uv sync --group benchmark
 
-# 전체 457개 테스트 샘플에 대한 STT 벤치마크 실행
-uv run benchmark_stt.py
+# 100개 샘플로 실행 (기본값)
+uv run python benchmark_ocr.py
+
+# 특정 샘플 수로 실행
+uv run python benchmark_ocr.py --num_samples 200
+
+# 태스크 타입별 필터링으로 특정 메트릭 테스트
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "table"  # TEDS 메트릭
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "ocr"    # BLEU, F-measure
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "agent"  # IoU 메트릭
+uv run python benchmark_ocr.py --num_samples 50 --task_filter "vqa"    # VQA ANLS
+```
+
+**출력:**
+- 콘솔: 실시간 진행상황 및 종합 메트릭
+- `benchmark/benchmark_ocr_results.json`: 샘플별 상세 결과
+
+### STT 벤치마킹 (한국어)
+
+[Zeroth-Korean 데이터셋](https://huggingface.co/datasets/kresnik/zeroth_korean)을 사용하여 Amazon Nova 2 Omni의 한국어 음성 인식 성능을 벤치마크합니다.
+
+**데이터셋 개요:**
+- **전체 데이터**: 훈련 데이터 51.6시간, 테스트 데이터 1.2시간
+- **발화**: 훈련 발화 22,263개, 테스트 발화 457개
+- **화자**: 훈련 화자 105명, 테스트 화자 10명
+- **샘플링 레이트**: 16kHz
+
+**기능:**
+- CER (문자 오류율) 및 WER (단어 오류율) 메트릭
+- P50/P95/P99 백분위수를 포함한 지연시간 측정 (TTFT, End-to-End)
+- 15개 동시 워커를 사용한 병렬 처리
+- 실시간 진행률 표시줄을 통한 진행상황 추적
+
+**STT 벤치마크 실행:**
+```bash
+# 전체 457개 테스트 샘플로 STT 벤치마크 실행
+uv run python benchmark_stt.py
+
+# 특정 샘플 수로 실행
+uv run python benchmark_stt.py --num_samples 100
 
 # 기존 결과 분석
-uv run benchmark_stt.py --analyze benchmark/benchmark_stt_results.json
+uv run python benchmark_stt.py --analyze benchmark/benchmark_stt_results.json
 ```
 
 **출력:**
 - 콘솔: 요약 통계 (CER/WER 평균, 지연시간 백분위수)
-- `benchmark/benchmark_stt_results.json`: 참조/예측 텍스트가 포함된 샘플별 상세 결과
+- `benchmark/benchmark_stt_results.json`: 샘플별 상세 결과
 
----
+## 📊 벤치마크 구성
+
+두 벤치마크 모두 다음 구성을 지원합니다:
+- **동시 워커**: 15개 (병렬 처리용)
+- **모델**: us.amazon.nova-2-omni-v1:0
+- **리전**: us-west-2
+- **메트릭**: 태스크별 평가 메트릭
+- **진행상황 추적**: 실시간 tqdm 진행률 표시줄
 
 ## 🤖 Amazon Nova 2 Omni 소개
 
@@ -87,7 +130,7 @@ Amazon Nova 2 Omni는 Amazon의 차세대 멀티모달 추론 및 이미지 생�
 #### 멀티모달 이해 및 생성
 - **텍스트, 이미지, 비디오, 음성** 입력의 통합 처리
 - **텍스트 및 이미지** 출력의 네이티브 생성
-- 여러 AI 모델을 관리할 필요 없는 다양한 작업을 위한 단일 모델
+- 여러 AI 모델을 관리할 필요 없이 다양한 태스크를 위한 단일 모델
 
 #### 고급 추론 기능
 - 대용량 문서 처리를 위한 **1M 토큰 컨텍스트 윈도우**
@@ -117,6 +160,36 @@ Amazon Nova 2 Omni는 Amazon의 차세대 멀티모달 추론 및 이미지 생�
 - **문서 분석**: 대용량 문서 및 비디오 콘텐츠 분석
 - **음성 처리**: 회의 전사, 번역 및 요약
 - **시각적 검색**: 이미지 및 비디오 기반 검색 시스템
+
+## 📁 프로젝트 구조
+
+```
+nova-2-omni-examples/
+├── main.py                    # Streamlit 데모 애플리케이션
+├── benchmark_ocr.py           # OCR 벤치마크 (OCRBench v2)
+├── benchmark_stt.py           # STT 벤치마크 (Zeroth-Korean)
+├── src/
+│   ├── common.py             # 공통 유틸리티 및 구성
+│   └── eval_metrics/
+│       └── ocr_metrics.py    # OCR 평가 메트릭
+├── benchmark/                # 벤치마크 결과 디렉토리
+└── README.md                 # 이 파일
+```
+
+## 🔧 개발
+
+### 새로운 벤치마크 추가
+
+1. 기존 패턴을 따라 새로운 벤치마크 스크립트 생성
+2. `src/eval_metrics/`에 평가 메트릭 추가
+3. `pyproject.toml`에서 의존성 업데이트
+4. README에 문서 추가
+
+### 구성
+
+- 모델 및 리전 설정: `src/common.py`
+- 벤치마크 매개변수: 명령줄 인수
+- 의존성: `pyproject.toml`
 
 ---
 

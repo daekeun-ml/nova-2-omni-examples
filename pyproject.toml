@@ -1,6 +1,6 @@
 [project]
 name = "nova-2-omni-demo"
-version = "1.0.2"
+version = "1.0.3"
 description = "A Streamlit-based demo application and benchmarking suite to experience and evaluate the powerful multimodal AI capabilities of Amazon Nova 2 Omni."
 readme = "README.md"
 requires-python = ">=3.12"
