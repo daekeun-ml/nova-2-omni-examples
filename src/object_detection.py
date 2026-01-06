@@ -35,26 +35,29 @@ class ObjectDetector:
         
         original_width, original_height = image.size
         
+        # 이미지 전처리 (해상도 및 포맷 최적화)
+        processed_image, processing_msg = self._preprocess_image(image)
+        
         buffer = BytesIO()
-        if image.mode in ("RGBA", "P"):
-            rgb_image = image.convert("RGB")
+        if processed_image.mode in ("RGBA", "P"):
+            rgb_image = processed_image.convert("RGB")
         else:
-            rgb_image = image
-        rgb_image.save(buffer, format="PNG")
+            rgb_image = processed_image
+        rgb_image.save(buffer, format="JPEG", quality=90)
         image_bytes = buffer.getvalue()
         
         if detection_type == "사용자 정의" and custom_object:
-            prompt = f"Detect all {custom_object} objects in this image. The image size is {original_width}x{original_height}. Return ONLY the bounding box coordinates in JSON format: [{{'bbox': [x1, y1, x2, y2], 'label': '{custom_object}'}}]. Use the exact image dimensions {original_width}x{original_height} for coordinates."
+            prompt = f"Detect all {custom_object} objects in this image. Return ONLY a JSON array with bounding box coordinates: [{{'bbox': [x1, y1, x2, y2], 'label': '{custom_object}', 'confidence': 0.95}}]. Use normalized coordinates (0-1000 range)."
         else:
             object_desc = self.object_map.get(detection_type, "objects and items")
-            prompt = f"Detect all {object_desc} in this image. The image size is {original_width}x{original_height}. Return ONLY the bounding box coordinates in JSON format: [{{'bbox': [x1, y1, x2, y2], 'label': 'object_name'}}]. Use the exact image dimensions {original_width}x{original_height} for coordinates."
+            prompt = f"Detect all {object_desc} in this image. Return ONLY a JSON array with bounding box coordinates: [{{'bbox': [x1, y1, x2, y2], 'label': 'object_name', 'confidence': 0.95}}]. Use normalized coordinates (0-1000 range)."
         
         messages = [{
             "role": "user",
             "content": [
                 {
                     "image": {
-                        "format": "png",
+                        "format": "jpeg",
                         "source": {"bytes": image_bytes}
                     }
                 },
@@ -83,34 +86,60 @@ class ObjectDetector:
             
             return {
                 "annotated_image": annotated_image,
+                "detection_json": bbox_data,
                 "detection_text": detection_text,
                 "bbox_count": len(bbox_data) if bbox_data else 0,
-                "original_size": (original_width, original_height)
+                "original_size": (original_width, original_height),
+                "processing_message": processing_msg
             }
         
         return None
+    
+    def _preprocess_image(self, image):
+        """이미지 전처리: 해상도 및 포맷 최적화"""
+        processing_msg = ""
+        processed_image = image
+        
+        width, height = image.size
+        
+        # 해상도 체크 및 리사이즈
+        if width > 3000:
+            # 비율 유지하면서 리사이즈
+            ratio = 3000 / width
+            new_width = 3000
+            new_height = int(height * ratio)
+            
+            # OpenCV로 리사이즈
+            img_array = np.array(image)
+            if len(img_array.shape) == 3:
+                img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            else:
+                img_cv = img_array
+            
+            resized_cv = cv2.resize(img_cv, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            
+            if len(img_array.shape) == 3:
+                resized_rgb = cv2.cvtColor(resized_cv, cv2.COLOR_BGR2RGB)
+            else:
+                resized_rgb = resized_cv
+            
+            processed_image = Image.fromarray(resized_rgb)
+            processing_msg += f"🔧 고해상도 이미지를 {width}x{height} → {new_width}x{new_height}로 리사이즈했습니다.\n"
+        
+        # PNG를 JPEG로 변환 (투명도 제거)
+        if image.format == 'PNG' or processed_image.mode in ('RGBA', 'P'):
+            if processed_image.mode in ('RGBA', 'P'):
+                processed_image = processed_image.convert('RGB')
+            processing_msg += "🔧 PNG 이미지를 JPEG로 변환하여 처리 속도를 최적화했습니다.\n"
+        
+        return processed_image, processing_msg
     
     def _parse_and_draw_boxes(self, rgb_image, detection_text):
         """Parse bounding boxes and draw them on the image"""
         
         try:
-            # Extract and clean JSON coordinates
-            json_match = re.search(r'\[.*\]', detection_text, re.DOTALL)
-            if not json_match:
-                return rgb_image, []
-            
-            json_str = json_match.group()
-            json_str = json_str.replace("'bbox':", '"bbox":')
-            json_str = json_str.replace("'label':", '"label":')
-            json_str = json_str.replace("{'", '{"')
-            json_str = json_str.replace("'}", '"}')
-            json_str = json_str.replace("': ", '": ')
-            json_str = json_str.replace(", '", ', "')
-            
-            try:
-                bbox_data = json.loads(json_str)
-            except json.JSONDecodeError:
-                bbox_data = self._regex_parse_boxes(detection_text)
+            # 여러 방법으로 JSON 파싱 시도
+            bbox_data = self._extract_json_data(detection_text)
             
             if not bbox_data:
                 return rgb_image, []
@@ -121,25 +150,26 @@ class ObjectDetector:
             
             current_height, current_width = img_cv.shape[:2]
             
-            # Find best scale for bounding boxes
-            best_scale = self._find_best_scale(bbox_data, current_width, current_height)
-            
             for i, obj in enumerate(bbox_data):
                 bbox = obj['bbox']
                 label = obj['label']
                 color = self.colors[i % len(self.colors)]
                 
-                x1 = max(0, min(int(bbox[0] * best_scale[0]), current_width-1))
-                y1 = max(0, min(int(bbox[1] * best_scale[1]), current_height-1))
-                x2 = max(0, min(int(bbox[2] * best_scale[0]), current_width-1))
-                y2 = max(0, min(int(bbox[3] * best_scale[1]), current_height-1))
+                # Remap normalized coordinates (0-1000) to image dimensions
+                remapped_bbox = self._remap_bbox_to_image(bbox, current_width, current_height)
+                
+                x1 = max(0, min(int(remapped_bbox[0]), current_width-1))
+                y1 = max(0, min(int(remapped_bbox[1]), current_height-1))
+                x2 = max(0, min(int(remapped_bbox[2]), current_width-1))
+                y2 = max(0, min(int(remapped_bbox[3]), current_height-1))
 
                 cv2.rectangle(img_cv, (x1, y1), (x2, y2), color, 3)
                 
                 label_text = f"{label} {i+1}"
-                label_size = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
-                cv2.rectangle(img_cv, (x1, y1-30), (x1+label_size[0]+10, y1), color, -1)
-                cv2.putText(img_cv, label_text, (x1+5, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                (label_width, label_height), baseline = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                label_y = max(label_height + 5, y1)
+                cv2.rectangle(img_cv, (x1, label_y - label_height - 5), (x1 + label_width + 10, label_y), color, -1)
+                cv2.putText(img_cv, label_text, (x1 + 5, label_y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
             # Convert back to PIL image
             img_rgb = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
@@ -149,6 +179,41 @@ class ObjectDetector:
             
         except Exception as e:
             return rgb_image, []
+    
+    def _extract_json_data(self, detection_text):
+        """다양한 방법으로 JSON 데이터 추출"""
+        
+        # 방법 1: 표준 JSON 배열 추출
+        json_match = re.search(r'\[.*\]', detection_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group()
+            
+            # JSON 문자열 정리
+            json_str = self._clean_json_string(json_str)
+            
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+        
+        # 방법 2: 정규식으로 파싱
+        return self._regex_parse_boxes(detection_text)
+    
+    def _clean_json_string(self, json_str):
+        """JSON 문자열 정리"""
+        # 작은따옴표를 큰따옴표로 변경
+        json_str = json_str.replace("'bbox':", '"bbox":')
+        json_str = json_str.replace("'label':", '"label":')
+        json_str = json_str.replace("'confidence':", '"confidence":')
+        json_str = json_str.replace("{'", '{"')
+        json_str = json_str.replace("'}", '"}')
+        json_str = json_str.replace("': ", '": ')
+        json_str = json_str.replace(", '", ', "')
+        
+        # confidence 값의 문자열 따옴표 제거
+        json_str = re.sub(r'"confidence":\s*"([0-9.]+)"', r'"confidence": \1', json_str)
+        
+        return json_str
     
     def _regex_parse_boxes(self, detection_text):
         """정규식으로 바운딩 박스 파싱"""
@@ -172,42 +237,11 @@ class ObjectDetector:
         
         return bbox_data
     
-    def _find_best_scale(self, bbox_data, current_width, current_height):
-        """Find best scale for bounding boxes"""
-        
-        possible_scales = [
-            (1.0, 1.0),  # original size
-            (current_width/1024, current_height/1024),  # 1024 based
-            (current_width/512, current_height/512),   # 512 based
-            (current_width/800, current_height/600),   # 800x600 based
-            (current_width/640, current_height/480),   # 640x480 based
-            (current_width/1280, current_height/720),  # 720p based
-            (current_width/1920, current_height/1080), # 1080p based
-            (current_width/224, current_height/224),   # 224x224 based
+    def _remap_bbox_to_image(self, bounding_box, image_width, image_height):
+        """Remap normalized coordinates (0-1000) to image dimensions"""
+        return [
+            bounding_box[0] * image_width / 1000,
+            bounding_box[1] * image_height / 1000,
+            bounding_box[2] * image_width / 1000,
+            bounding_box[3] * image_height / 1000,
         ]
-        
-        best_scale = (1.0, 1.0)
-        best_score = 0
-        
-        for scale_x, scale_y in possible_scales:
-            valid_boxes = 0
-            for obj in bbox_data:
-                bbox = obj['bbox']
-                scaled_x1 = int(bbox[0] * scale_x)
-                scaled_y1 = int(bbox[1] * scale_y)
-                scaled_x2 = int(bbox[2] * scale_x)
-                scaled_y2 = int(bbox[3] * scale_y)
-
-                # Check if the scaled box is within image bounds and has valid size
-                if (0 <= scaled_x1 < current_width and 
-                    0 <= scaled_y1 < current_height and
-                    0 <= scaled_x2 <= current_width and 
-                    0 <= scaled_y2 <= current_height and
-                    scaled_x2 > scaled_x1 and scaled_y2 > scaled_y1):
-                    valid_boxes += 1
-            
-            if valid_boxes > best_score:
-                best_score = valid_boxes
-                best_scale = (scale_x, scale_y)
-        
-        return best_scale

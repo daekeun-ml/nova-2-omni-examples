@@ -28,4 +28,5 @@ fi
 
 # Streamlit 앱 실행
 echo "🚀 Streamlit 데모를 시작합니다..."
+echo "💡 첫 실행 시 라이브러리 로딩으로 몇 초 정도 소요될 수 있습니다..."
 uv run streamlit run main.py --server.port 8501

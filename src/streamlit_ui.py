@@ -1,25 +1,38 @@
 import streamlit as st
 from io import BytesIO
 from PIL import Image
-from .common import (
-    get_bedrock_runtime, get_current_model_id, translate_to_english, 
-    translate_to_user_language, detect_non_english, convert_image_to_bytes, 
-    load_image_as_bytes, call_nova_model, format_stt_result, translate_text, 
-    extract_video_frames, parse_json_from_text
-)
-from .document_analysis import DocumentAnalyzer
-from .object_detection import ObjectDetector
-from .video_understanding import VideoAnalyzer, VIDEO_ANALYSIS_PROMPTS, get_video_format, parse_timestamps
-from .image_generation import ImageGenerator
-from .image_editing import ImageEditor
 
-# 선택적 모듈들
-try:
-    import fitz
-    from .multi_agent import create_safety_agent, create_coordinator_agent, MultiAgentOrchestrator
-    from .speech_understanding import SpeechAnalyzer, load_audio_as_bytes
-except ImportError:
-    pass
+# 지연 임포트를 위한 함수들
+def _import_common():
+    from .common import (
+        get_bedrock_runtime, get_current_model_id, translate_to_english, 
+        translate_to_user_language, detect_non_english, convert_image_to_bytes, 
+        load_image_as_bytes, call_nova_model, format_stt_result, translate_text, 
+        extract_video_frames, parse_json_from_text
+    )
+    return locals()
+
+def _import_pil():
+    
+    from PIL import Image
+    return BytesIO, Image
+
+def _import_analyzers():
+    from .document_analysis import DocumentAnalyzer
+    from .object_detection import ObjectDetector
+    from .video_understanding import VideoAnalyzer, VIDEO_ANALYSIS_PROMPTS, get_video_format, parse_timestamps
+    from .image_generation import ImageGenerator
+    from .image_editing import ImageEditor
+    return locals()
+
+def _import_optional():
+    try:
+        import fitz
+        from .multi_agent import create_safety_agent, create_coordinator_agent, MultiAgentOrchestrator
+        from .speech_understanding import SpeechAnalyzer, load_audio_as_bytes
+        return locals()
+    except ImportError:
+        return {}
 
 def main():
     st.title("Amazon Nova 2 Omni 멀티모달 데모")
@@ -161,11 +174,13 @@ def speech_understanding_demo(temperature, max_tokens, top_p):
         
         if st.button("오디오 분석 시작"):
             try:
+                from .speech_understanding import load_audio_as_bytes
                 audio_bytes = load_audio_as_bytes(uploaded_file)
                 audio_format = uploaded_file.name.split('.')[-1].lower()
                 
                 if audio_bytes:
                     with st.spinner("오디오를 분석하는 중..."):
+                        from .speech_understanding import SpeechAnalyzer, load_audio_as_bytes
                         analyzer = SpeechAnalyzer()
                         
                         # 오디오 분석 실행
@@ -186,11 +201,13 @@ def speech_understanding_demo(temperature, max_tokens, top_p):
                             if analysis_type in ["transcription", "diarization"]:
                                 st.subheader(f"📋 {analysis_type_korean} 결과")
                                 # STT 결과 가독성 향상
+                                from .common import format_stt_result
                                 formatted_result = format_stt_result(result)
                                 st.markdown(formatted_result)
                             else:
                                 # 결과를 한국어로 번역
                                 st.write("🔄 결과를 한국어로 번역 중...")
+                                from .common import translate_to_user_language
                                 korean_result = translate_to_user_language(result)
                                 
                                 st.subheader(f"📋 {analysis_type_korean} 결과")
@@ -266,6 +283,8 @@ def image_generation_demo(temperature, max_tokens, top_p):
         if st.button("이미지 생성", type="primary"):
             try:
                 with st.spinner("이미지를 생성하는 중..."):
+                    # 필요할 때만 임포트
+                    from .image_generation import ImageGenerator
                     generator = ImageGenerator()
                     
                     result = generator.generate_image(
@@ -294,6 +313,7 @@ def image_generation_demo(temperature, max_tokens, top_p):
             st.image(st.session_state.generated_image, caption="생성된 이미지")
             
             # 다운로드 버튼 추가
+            
             img_buffer = BytesIO()
             st.session_state.generated_image.save(img_buffer, format="PNG")
             img_bytes = img_buffer.getvalue()
@@ -326,6 +346,7 @@ def image_editing_demo(temperature, max_tokens, top_p):
         if use_default:
             try:
                 default_path = "samples/img-editing.png"
+                
                 with open(default_path, "rb") as f:
                     uploaded_file = BytesIO(f.read())
                     uploaded_file.name = "img-editing.png"
@@ -381,6 +402,7 @@ def image_editing_demo(temperature, max_tokens, top_p):
             if st.button("이미지 편집", type="primary"):
                 try:
                     with st.spinner("이미지를 편집하는 중..."):
+                        from .image_editing import ImageEditor
                         editor = ImageEditor()
                         
                         result = editor.edit_image(
@@ -406,6 +428,7 @@ def image_editing_demo(temperature, max_tokens, top_p):
             st.image(st.session_state.edited_image, caption="편집된 이미지")
             
             # 다운로드 버튼 추가
+            
             img_buffer = BytesIO()
             st.session_state.edited_image.save(img_buffer, format="PNG")
             img_bytes = img_buffer.getvalue()
@@ -461,10 +484,12 @@ def video_understanding_demo(temperature, max_tokens, top_p):
         
         if st.button("비디오 분석 시작"):
             try:
+                from .video_understanding import get_video_format
                 video_bytes = uploaded_file.read()
                 video_format = get_video_format(uploaded_file.name)
                 
                 with st.spinner("비디오를 분석하는 중..."):
+                    from .video_understanding import VideoAnalyzer, VIDEO_ANALYSIS_PROMPTS, get_video_format, parse_timestamps
                     analyzer = VideoAnalyzer()
                     
                     # 프롬프트 준비
@@ -520,6 +545,7 @@ def video_understanding_demo(temperature, max_tokens, top_p):
                     # 이벤트 타임스탬프 특별 처리
                     elif analysis_type == "이벤트 타임스탬프":
                         st.markdown(result_text)
+                        from .video_understanding import parse_timestamps
                         timestamps = parse_timestamps(result_text)
                         if timestamps:
                             uploaded_file.seek(0)
@@ -578,6 +604,7 @@ def document_analysis_demo(temperature, max_tokens, top_p):
             if st.button("문서 분석", type="primary"):
                 with st.spinner("문서를 분석하는 중..."):
                     try:
+                        from .document_analysis import DocumentAnalyzer
                         analyzer = DocumentAnalyzer()
                         file_bytes = uploaded_file.read()
                         
@@ -670,6 +697,7 @@ def object_detection_demo(temperature, max_tokens, top_p):
             if st.button("객체 탐지", type="primary"):
                 with st.spinner("객체를 탐지하는 중..."):
                     try:
+                        from .object_detection import ObjectDetector
                         detector = ObjectDetector()
                         
                         result = detector.detect_objects(
@@ -682,8 +710,13 @@ def object_detection_demo(temperature, max_tokens, top_p):
                         )
                         
                         if result:
+                            # 전처리 메시지 표시
+                            if result.get("processing_message"):
+                                st.info(result["processing_message"])
+                            
                             st.session_state.detection_image = result["annotated_image"]
-                            st.session_state.detection_result = f"🎯 탐지된 객체 수: {result['bbox_count']}\n\n📏 원본 이미지 크기: {result['original_size'][0]} x {result['original_size'][1]}\n\n📋 상세 정보:\n{result['detection_text']}"
+                            st.session_state.detection_json = result["detection_json"]
+                            st.session_state.detection_summary = f"🎯 탐지된 객체 수: {result['bbox_count']}\n\n📏 원본 이미지 크기: {result['original_size'][0]} x {result['original_size'][1]}"
                             st.rerun()
                         else:
                             st.error("객체 탐지 결과를 받지 못했습니다.")
@@ -694,9 +727,14 @@ def object_detection_demo(temperature, max_tokens, top_p):
                         st.error(f"객체 탐지 중 오류 발생: {str(e)}")
     
     with col2:
-        if "detection_result" in st.session_state:
+        if "detection_summary" in st.session_state:
             st.markdown("### 탐지 결과:")
-            st.write(st.session_state.detection_result)
+            st.write(st.session_state.detection_summary)
+            
+            # JSON 데이터를 클릭해서 보기
+            if "detection_json" in st.session_state and st.session_state.detection_json:
+                with st.expander("📋 상세 정보 (클릭해서 보기)"):
+                    st.json(st.session_state.detection_json)
         
         # 탐지된 이미지 표시 (bounding box 포함)
         if "detection_image" in st.session_state:
@@ -826,9 +864,11 @@ def multi_agent_demo(temperature, max_tokens, top_p):
         if uploaded_file:
             if st.button("Multi-Agent 분석 시작"):
                 try:
+                    from .common import convert_image_to_bytes
                     image_bytes, image_format = convert_image_to_bytes(image)
 
                     with st.spinner("에이전트들이 분석 중입니다..."):
+                        from .multi_agent import create_safety_agent, create_coordinator_agent, MultiAgentOrchestrator
                         # 에이전트 생성 (reasoning 모드 적용)
                         safety_agent = create_safety_agent(reasoning_mode)
                         coordinator_agent = create_coordinator_agent(reasoning_mode)
