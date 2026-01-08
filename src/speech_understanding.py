@@ -19,7 +19,23 @@ class SpeechAnalyzer:
             "diarization": """For each speaker turn segment, transcribe, assign a speaker label, start and end timestamps. 
 You must follow the exact XML format shown in the example below: 
 '<segment><transcription speaker="speaker_id" start="start_time" end="end_time">transcription_text</transcription></segment>'""",
-            "summary": "Summarize the main content and key points discussed in this audio.",
+            "summary": """Create a comprehensive summary of this audio content in well-structured markdown format:
+
+## 📋 주요 내용 요약
+
+### 🎯 핵심 주제
+- [주요 주제들을 bullet point로 나열]
+
+### 📝 상세 내용
+- [중요한 내용들을 체계적으로 정리]
+
+### 💡 주요 포인트
+- [핵심 포인트들을 명확하게 정리]
+
+### 📊 결론 및 시사점
+- [결론과 중요한 시사점들을 정리]
+
+Please format the response in clean, readable Korean markdown with proper headers and bullet points.""",
             "sentiment": "Analyze the sentiment and emotional tone of the speakers in this audio.",
             "key_points": "Extract the key points, important topics, and main takeaways from this audio.",
             "call_analytics": """Analyze the call and return JSON:

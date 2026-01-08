@@ -118,7 +118,23 @@ class VideoAnalyzer:
 
 # Predefined analysis types with prompts (from Jupyter notebook)
 VIDEO_ANALYSIS_PROMPTS = {
-    "요약": "Can you create an executive summary of this video's content?",
+    "요약": """Create a comprehensive executive summary of this video's content in well-structured markdown format:
+
+## 📋 비디오 요약
+
+### 🎯 주요 주제
+- [비디오의 핵심 주제들을 bullet point로 나열]
+
+### 📝 상세 내용
+- [중요한 장면과 내용들을 시간순으로 정리]
+
+### 💡 핵심 포인트
+- [주요 메시지와 중요한 정보들을 정리]
+
+### 📊 결론 및 시사점
+- [비디오의 결론과 중요한 시사점들을 정리]
+
+Please format the response in clean, readable Korean markdown with proper headers and bullet points.""",
     
     "하이라이트 추출": """Extract high-impact highlight moments from this video and provide specific timestamps in seconds.
 

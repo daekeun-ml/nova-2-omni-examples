@@ -31,7 +31,23 @@ Return the extracted text in clean, readable format with proper markdown structu
             
             "핵심 정보 추출": "Extract key information from this document and return it in structured JSON format with clear categories and values.",
             "표 데이터 추출": "Extract all table data from this document and convert it to structured markdown tables or JSON format.",
-            "문서 요약": "Summarize the main content of this document in a clear and organized manner with bullet points and sections."
+            "문서 요약": """Summarize the main content of this document in a well-structured markdown format:
+
+## 📋 문서 요약
+
+### 🎯 주요 주제
+- [문서의 핵심 주제들을 bullet point로 나열]
+
+### 📝 상세 내용
+- [중요한 섹션과 내용들을 체계적으로 정리]
+
+### 💡 핵심 포인트
+- [주요 데이터, 통계, 중요한 정보들을 정리]
+
+### 📊 결론 및 시사점
+- [문서의 결론과 중요한 시사점들을 정리]
+
+Please format the response in clean, readable Korean markdown with proper headers and bullet points."""
         }
     
     def analyze_pdf_parallel(self, file_bytes, analysis_option, temperature=0.0, max_tokens=2000, top_p=1.0, 

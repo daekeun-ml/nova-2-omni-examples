@@ -493,6 +493,7 @@ def video_understanding_demo(temperature, max_tokens, top_p):
                     analyzer = VideoAnalyzer()
                     
                     # 프롬프트 준비
+                    from .common import translate_to_english, detect_non_english
                     if analysis_type == "사용자 정의":
                         prompt = translate_to_english(custom_prompt) if detect_non_english(custom_prompt) else custom_prompt
                     elif analysis_type == "이벤트 타임스탬프":
@@ -561,6 +562,7 @@ def video_understanding_demo(temperature, max_tokens, top_p):
                                         st.image(frames[1], caption=f"끝: {end:.1f}초", width=250)
                     else:
                         # 다른 분석 유형은 한국어로 번역
+                        from .common import translate_to_user_language
                         korean_result = translate_to_user_language(result_text)
                         st.markdown(korean_result)
                         st.session_state.video_result = korean_result
